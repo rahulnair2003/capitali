@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ECRI Asset Finder</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        table, th, td {
+            border: 1px solid black;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 8px;
+            text-align: center;
+        }
+
+        #copyAlert {
+            visibility: hidden;
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 16px;
+            opacity: 0;
+            transition: opacity 0.5s ease-out, visibility 0.5s ease-out;
+            z-index: 1000;
+        }
+
+        #copyAlert.show {
+            visibility: visible;
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <h1>ECRI Asset Finder</h1>
+    <form id="searchForm">
+        <label for="equipmentType">Enter Equipment Type:</label>
+        <input type="text" id="equipmentType" name="equipment_type" required>
+        <button type="submit">Search</button>
+    </form>
+    
+    <h2>Results</h2>
+    <table id="resultsTable" style="width:100%; border-collapse: collapse;">
+        <thead>
+            <tr>
+                <th>ECRI #</th>
+                <th>Equipment Type</th>
+                <th>Confidence (%)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Results will be inserted here -->
+        </tbody>
+    </table>
+
+    <div id="copyAlert">Copied to clipboard!</div>
+    
+    <script>
+        function showCopyAlert() {
+            const alert = document.getElementById("copyAlert");
+            alert.classList.add("show"); 
+            setTimeout(() => {
+                alert.classList.remove("show");
+            }, 2000); 
+        }
+
+        document.getElementById("searchForm").addEventListener("submit", function(event) {
+            event.preventDefault();
+            
+            const equipmentType = document.getElementById("equipmentType").value;
+            
+            fetch("/search", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: `equipment_type=${encodeURIComponent(equipmentType)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                const resultsTableBody = document.querySelector("#resultsTable tbody");
+                resultsTableBody.innerHTML = "";
+                
+                data.forEach(result => {
+                    const row = document.createElement("tr");
+                    const deviceCodeCell = document.createElement("td");
+                    deviceCodeCell.textContent = result.device_code;
+                    row.appendChild(deviceCodeCell);
+                    const equipmentTypeCell = document.createElement("td");
+                    equipmentTypeCell.textContent = result.equipment_type;
+                    equipmentTypeCell.addEventListener("dblclick", function() {
+                        navigator.clipboard.writeText(result.equipment_type).then(() => {
+                            showCopyAlert();
+                        }).catch(err => {
+                            console.error("Failed to copy: ", err);
+                        });
+                    });
+                    row.appendChild(equipmentTypeCell);
+
+                    const confidenceCell = document.createElement("td");
+                    confidenceCell.textContent = result.confidence.toFixed(2);
+                    row.appendChild(confidenceCell);
+
+                    resultsTableBody.appendChild(row);
+                });
+            });
+        });
+    </script>
+</body>
+</html>
